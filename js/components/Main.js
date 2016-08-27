@@ -1,10 +1,7 @@
 import React from 'react';
-import API from '../API';
-import LinkStore from '../stores/LinkStore';
+import Relay from 'react-relay';
 
-let _getAppState = () => {
-    return {links: LinkStore.getAll()}
-};
+import Link from './Link';
 
 class Main extends React.Component {
     static propTypes = {
@@ -15,26 +12,11 @@ class Main extends React.Component {
         limit: 4
     };
 
-    state = _getAppState();
-
-    componentDidMount(){
-        API.fetchLinks();
-        LinkStore.on('change', this.onChange);
-    }
-    componentWillUnmount(){
-        LinkStore.removeListener('change', this.onChange)
-    }
-    onChange = () => {
-        console.log('view');
-        this.setState(_getAppState());
-    }
     render() {
 
-        let content = this.state.links.slice(0, this.props.limit).map(link => {
+        let content = this.props.store.links.slice(0, this.props.limit).map(link => {
             return (
-                <li key={link._id}>
-                    <a href={link.url}>{link.title}</a>
-                </li>
+                <Link key={link._id} link={link} />
             )
         });
 
@@ -48,5 +30,17 @@ class Main extends React.Component {
         );
     }
 }
+
+Main = Relay.createContainer(Main, {
+    fragments:{
+        store: () => Relay.QL`
+        fragment on Store {
+            links {
+                _id,
+                ${Link.getFragment('link')}
+            }
+        }`
+    }
+});
 
 export default Main;
