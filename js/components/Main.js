@@ -2,27 +2,49 @@ import React from 'react';
 import Relay from 'react-relay';
 
 import Link from './Link';
+import CreateLinkMutation from '../mutations/CreateLinkMutation'
+
 
 class Main extends React.Component {
-    static propTypes = {
-        limit: React.PropTypes.number
+
+    setLimit = (e) => {
+        let newLimit = Number(e.target.value);
+        this.props.relay.setVariables({ limit: newLimit });
     };
 
-    static defaultProps = {
-        limit: 4
+    handleSubmit = (e) => {
+        e.preventDefault();
+        Relay.Store.update(
+           new CreateLinkMutation({
+               title: this.refs.newTitle.value,
+               url: this.refs.newUrl.value,
+               store: this.props.store
+           })
+        );
+        this.refs.newTitle.value = "";
+        this.refs.newUrl.value = "";
     };
 
     render() {
 
-        let content = this.props.store.links.slice(0, this.props.limit).map(link => {
+        let content = this.props.store.linkConnection.edges.map(edge => {
             return (
-                <Link key={link._id} link={link} />
+                <Link key={edge.node.id} link={edge.node} />
             )
         });
 
         return (
             <div>
                 <h3>Links</h3>
+                <form onSubmit={this.handleSubmit}>
+                    <input type="text" placeholder="Title" ref="newTitle" />
+                    <input type="text" placeholder="Url" ref="newUrl" />
+                    <button type="submit">Add</button>
+                </form>
+                <select onChange={this.setLimit} defaultValue={this.props.relay.variables.limit}>
+                    <option value="20">20</option>
+                    <option value="10">10</option>
+                </select>
                 <ul>
                     {content}
                 </ul>
@@ -32,14 +54,22 @@ class Main extends React.Component {
 }
 
 Main = Relay.createContainer(Main, {
-    fragments:{
+    initialVariables: {
+        limit: 10
+    },
+    fragments: {
         store: () => Relay.QL`
-        fragment on Store {
-            links {
-                _id,
-                ${Link.getFragment('link')}
-            }
-        }`
+            fragment on Store {
+                id,
+                linkConnection(first: $limit) {
+                    edges {
+                        node {
+                            id
+                            ${Link.getFragment('link')}
+                        }
+                    }
+                }
+            }`
     }
 });
 
